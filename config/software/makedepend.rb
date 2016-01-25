@@ -24,7 +24,7 @@ relative_path "makedepend-1.0.5"
 
 dependency "xproto"
 dependency "util-macros"
-dependency "pkg-config"
+dependency "pkg-config-lite"
 
 build do
   env = with_standard_compiler_flags(with_embedded_path)

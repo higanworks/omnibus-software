@@ -1,5 +1,5 @@
 #
-# Copyright 2012-2014 Chef Software, Inc.
+# Copyright 2012-2015 Chef Software, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,13 @@ name "libffi"
 
 default_version "3.2.1"
 
-dependency "libtool"
+if windows?
+  dependency "patch"
+  dependency "mingw"
+else
+  # Is libtool actually necessary? Doesn't configure generate one?
+  dependency "libtool"
+end
 
 version("3.0.13") { source md5: "45f3b6dbc9ee7c7dfbbbc5feba571529" }
 version("3.2.1")  { source md5: "83b89587607e3eb65c70d361f13bab43" }
@@ -28,12 +34,23 @@ source url: "ftp://sourceware.org/pub/libffi/libffi-#{version}.tar.gz"
 relative_path "libffi-#{version}"
 
 build do
-  env = with_standard_compiler_flags(with_embedded_path)
+  env = with_standard_compiler_flags(with_embedded_path({}, msys: true))
 
-  env['INSTALL'] = "/opt/freeware/bin/install" if ohai['platform'] == "aix"
+  env['INSTALL'] = "/opt/freeware/bin/install" if aix?
 
-  command "./configure" \
-          " --prefix=#{install_dir}/embedded", env: env
+  configure_command = []
+
+  # AIX's old version of patch doesn't like the patch here
+  unless aix?
+    # Patch to disable multi-os-directory via configure flag (don't use /lib64)
+    # Works on all platforms, and is compatible on 32bit platforms as well
+    if version == "3.2.1"
+      patch source: "libffi-3.2.1-disable-multi-os-directory.patch", plevel: 1, env: env
+      configure_command << "--disable-multi-os-directory"
+    end
+  end
+
+  configure(*configure_command, env: env)
 
   if solaris2?
     # run old make :(
@@ -47,15 +64,4 @@ build do
   # libffi's default install location of header files is awful...
   copy "#{install_dir}/embedded/lib/libffi-#{version}/include/*", "#{install_dir}/embedded/include"
 
-  # On 64-bit centos, libffi libraries are places under /embedded/lib64
-  # move them over to lib
-  # wrlinux support is merged to chef-sugar master, waiting on 3.1.2 release
-  # https://github.com/sethvargo/chef-sugar/pull/116
-  if (rhel? || suse? || ohai['platform_family'] == 'wrlinux') && _64_bit?
-    # Can't use 'move' here since that uses FileUtils.mv, which on < Ruby 2.2.0-dev
-    # returns ENOENT on moving symlinks with broken (in this case, already moved) targets.
-    # http://comments.gmane.org/gmane.comp.lang.ruby.cvs/49907
-    copy "#{install_dir}/embedded/lib64/*", "#{install_dir}/embedded/lib/"
-    delete "#{install_dir}/embedded/lib64"
-  end
 end

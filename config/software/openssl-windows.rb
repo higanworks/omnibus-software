@@ -30,7 +30,7 @@
 # series for those rubies.
 
 name "openssl-windows"
-default_version "1.0.1p"
+default_version "1.0.1q"
 
 dependency "ruby-windows"
 
@@ -58,42 +58,35 @@ if windows_arch_i386?
     source url: "https://github.com/jaym/windows-openssl-build/releases/download/openssl-1.0.1p/openssl-1.0.1p-x86-windows.tar.lzma",
            md5: "013c0f27c4839c89e33037acc72f17c5"
   end
+
+  version('1.0.1q') do
+    source url: "https://github.com/jaym/windows-openssl-build/releases/download/openssl-1.0.1q/openssl-1.0.1q-x86-windows.tar.lzma",
+           md5: "3970fb1323b89c068525d60211670528"
+  end
 else
   version('1.0.1p') do
     source url: "https://github.com/jaym/windows-openssl-build/releases/download/openssl-1.0.1p/openssl-1.0.1p-x64-windows.tar.lzma",
            md5: "ffdcef3e4fd1eca457a2e9a08cdd5aa1"
   end
+
+  version('1.0.1q') do
+    source url: "https://github.com/jaym/windows-openssl-build/releases/download/openssl-1.0.1q/openssl-1.0.1q-x64-windows.tar.lzma",
+           md5: "c9a05a9dfed1b91674ccfbb0b9e731c9"
+  end
 end
 
-build do
-  env = with_standard_compiler_flags(with_embedded_path)
+relative_path 'bin'
 
+build do
   # Make sure the OpenSSL version is suitable for our path:
   # OpenSSL version is something like
   # OpenSSL 1.0.0k 5 Feb 2013
   ruby "-e \"require 'openssl'; puts 'OpenSSL patch version check expecting <= #{version}'; puts 'Current version : ' + OpenSSL::OPENSSL_VERSION; exit(1) if OpenSSL::OPENSSL_VERSION.split(' ')[1] >= '#{version}'\""
 
-  tmpdir = File.join(Omnibus::Config.cache_dir, "openssl-cache")
-
-  if windows_arch_i386?
-    tar_filename = "openssl-#{version}-x86-windows.tar"
-  else
-    tar_filename = "openssl-#{version}-x64-windows.tar"
-  end
-
-  # Ensure the directory exists
-  mkdir tmpdir
-
-  # First extract the tar file out of lzma archive.
-  command "7z.exe x #{project_file} -o#{tmpdir} -r -y", env: env
-
-  # Now extract the files out of tar archive.
-  command "7z.exe x #{File.join(tmpdir, tar_filename)} -o#{tmpdir} -r -y", env: env
-
   # Copy over the required dlls into embedded/bin
-  copy "#{tmpdir}/bin/libeay32.dll", "#{install_dir}/embedded/bin/"
-  copy "#{tmpdir}/bin/ssleay32.dll", "#{install_dir}/embedded/bin/"
+  copy "libeay32.dll", "#{install_dir}/embedded/bin/"
+  copy "ssleay32.dll", "#{install_dir}/embedded/bin/"
 
   # Also copy over the openssl executable for debugging
-  copy "#{tmpdir}/bin/openssl.exe", "#{install_dir}/embedded/bin/"
+  copy "bin/openssl.exe", "#{install_dir}/embedded/bin/"
 end

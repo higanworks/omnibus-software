@@ -39,16 +39,21 @@ version "2.2.1" do
   source md5: "ff41fdb094eed1ec430aed8ee9b9849c"
 end
 
+version "2.6.2" do
+  source md5: "da293290da69f45a86a311ad3cd43dc8"
+end
+
 source url: "https://www.kernel.org/pub/software/scm/git/git-#{version}.tar.gz"
 
 build do
 
   env = with_standard_compiler_flags(with_embedded_path).merge(
-    "NEEDS_LIBICONV"     => "1",
-    "NO_GETTEXT"         => "1",
-    "NO_PYTHON"          => "1",
-    "NO_R_TO_GCC_LINKER" => "1",
-    "NO_TCLTK"           => "1",
+    "NEEDS_LIBICONV"       => "1",
+    "NO_GETTEXT"           => "1",
+    "NO_PYTHON"            => "1",
+    "NO_R_TO_GCC_LINKER"   => "1",
+    "NO_TCLTK"             => "1",
+    "NO_INSTALL_HARDLINKS" => "1",
 
     "CURLDIR"    => "#{install_dir}/embedded",
     "EXPATDIR"   => "#{install_dir}/embedded",
@@ -60,11 +65,16 @@ build do
   )
 
   # AIX needs /opt/freeware/bin only for patch
-  patch_env = env.dup
-  patch_env['PATH'] = "/opt/freeware/bin:#{env['PATH']}" if aix?
+  if aix?
+    patch_env = env.dup
+    patch_env['PATH'] = "/opt/freeware/bin:#{env['PATH']}"
 
-  patch source: "aix-use-freeware-install.patch", plevel: 1, env: patch_env if aix?
-  patch source: "aix-strcmp-in-dirc.patch", plevel: 1, env: patch_env if aix?
+    # But only needs the below for 1.9.5
+    if version == '1.9.5'
+      patch source: "aix-use-freeware-install.patch", plevel: 1, env: patch_env
+      patch source: "aix-strcmp-in-dirc.patch", plevel: 1, env: patch_env
+    end
+  end
 
   configure_command = ["./configure",
                        "--prefix=#{install_dir}/embedded"]
@@ -75,13 +85,10 @@ build do
     configure_command << "--with-curl=#{install_dir}/embedded"
     configure_command << "--with-expat=#{install_dir}/embedded"
     configure_command << "--with-perl=#{install_dir}/embedded/bin/perl"
-  elsif aix?
-    # without this, git produces some nroff files with "::" in the filename
-    # causing the install process to fail with "sysck: 3001-019"
-    configure_command << "--docdir='/dev/null'"
   end
 
   command configure_command.join(" "), env: env
+
   make "-j #{workers}", env: env
   make "install", env: env
 end

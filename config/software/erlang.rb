@@ -63,6 +63,16 @@ version '17.5' do
   relative_path 'otp_src_17.5'
 end
 
+version '18.1' do
+  source md5: 'fa64015fdd133e155b5b19bf90ac8678'
+  relative_path 'otp_src_18.1'
+end
+
+version '18.2' do
+  source md5: 'b336d2a8ccfbe60266f71d102e99f7ed'
+  relative_path 'otp_src_18.2'
+end
+
 build do
   env = with_standard_compiler_flags(with_embedded_path).merge(
     # WARNING!
